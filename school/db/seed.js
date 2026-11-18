@@ -3,6 +3,9 @@
  * 規則：可重複執行（先清空、再種入資料），即使執行多次也不會有資料疊加的狀況。
  * 執行順序：一定要先 npm run migration:run（沒有資料表，就無法種資料）
  */
+const Grade = require('../entities/Grade')
+const Student = require('../entities/Student')
+const Subject = require('../entities/Subject')
 const { dataSource } = require('./data-source')
 
 /** 清空：被 FK 指著的表最後刪（GRADE 先刪，CLASS / SUBJECT 最後刪）。
@@ -10,6 +13,7 @@ const { dataSource } = require('./data-source')
 async function clearAll() {
   const ORDER = [
     // TODO: 按「你的」FK 依賴順序填 entity name（先刪 Grade，再 Student，最後 Class / Subject）
+    'Grade','Student','Class','Subject'
   ]
   for (const name of ORDER) {
     if (dataSource.hasMetadata(name)) {
@@ -31,6 +35,38 @@ async function main() {
   //      studentRepo.save({ name: '...', class: 班級物件 })
   //      gradeRepo.save({ score: 95, student: 學生物件, subject: 科目物件 })
   // ================================================================================
+  const classRepo = dataSource.getRepository('Class')
+  const subjectRepo = dataSource.getRepository('Subject')
+  const studentRepo = dataSource.getRepository('Student')
+  const gradeRepo = dataSource.getRepository('Grade')
+
+  const [class_1, class_2] = await classRepo.save([
+    {name:'一年忠班'},
+    {name:'一年孝班'}
+  ])
+
+  const [math,science] = await subjectRepo.save([
+    {name:'數學'},
+    {name:'自然'}
+  ])
+
+  const [Alice, jesmine, lion, yard] = await studentRepo.save([
+    {name:'陳巧紋',class:class_1},
+    {name:'李珮雯',class:class_1},
+    {name:'黃亭瑄',class:class_2},
+    {name:'黃庭院',class:class_2}
+  ])
+
+  await gradeRepo.save([
+    {score: 65 , student:Alice, subject:math},
+    {score: 100 , student:jesmine, subject: math},
+    {score: 30 , student:lion, subject:math},
+    {score: 15 , student:yard, subject: math},
+    {score: 30 , student:Alice, subject:science},
+    {score: 50 , student:jesmine, subject: science},
+    {score: 20 , student:lion, subject:science},
+    {score: 18 , student:yard, subject: science},
+  ])
 
   console.log('🌱 seed 完成')
   await dataSource.destroy()
